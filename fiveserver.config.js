@@ -1,0 +1,3 @@
+module.exports = {
+  php: "C:\\Program Files\\php-8.5.10\\php.exe"
+};
