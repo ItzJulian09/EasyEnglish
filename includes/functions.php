@@ -1,4 +1,6 @@
 <?php
+session_start();
+
 define('ROOT_PATH', dirname(__DIR__));
 define('STORAGE_PATH', ROOT_PATH . '/storage');
 
@@ -34,8 +36,30 @@ function e(string $value): string
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 }
 
+function currentUser(): ?array
+{
+    foreach (readData('users.json') as $user) {
+        if ($user['id'] === ($_SESSION['user_id'] ?? '')) {
+            return $user;
+        }
+    }
+
+    return null;
+}
+
+function requireLogin(): array
+{
+    $user = currentUser();
+    if (!$user) {
+        redirect('login.php');
+    }
+
+    return $user;
+}
+
 function pageHeader(string $title, string $active = ''): void
 {
+    $user = requireLogin();
     ?>
     <!doctype html>
     <html lang="nl">
@@ -54,9 +78,35 @@ function pageHeader(string $title, string $active = ''): void
             <a class="<?= $active === 'library' ? 'active' : '' ?>" href="index.php#bibliotheek">Bibliotheek</a>
             <a class="<?= $active === 'progress' ? 'active' : '' ?>" href="index.php#voortgang">Voortgang</a>
           </nav>
-          <div class="account"><span>Easy English</span></div>
+          <div class="account">
+            <span><?= e($user['name']) ?></span>
+            <a class="logout" href="logout.php">Uitloggen</a>
+          </div>
         </div>
       </header>
+    <?php
+}
+
+function publicHeader(): void
+{
+    ?>
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a class="brand" href="index.php">
+          <img class="logo" src="assets/img/logo.png" alt="Easy English logo">
+          <span class="brand-name">Easy English</span>
+        </a>
+        <nav class="main-nav">
+          <a href="index.php">Mijn lijsten</a>
+          <a href="index.php#bibliotheek">Bibliotheek</a>
+          <a href="index.php#voortgang">Voortgang</a>
+        </nav>
+        <div class="account">
+          <a class="auth-nav-link" href="login.php">Inloggen</a>
+          <a class="auth-nav-link" href="register.php">Registreren</a>
+        </div>
+      </div>
+    </header>
     <?php
 }
 

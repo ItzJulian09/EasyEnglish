@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/includes/functions.php';
+$user = requireLogin();
 
 $requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
@@ -10,6 +11,7 @@ if ($requestMethod === 'POST' && ($_POST['action'] ?? '') === 'add-list') {
     if ($name !== '') {
         $lists[] = [
             'id' => uniqid('list_', true),
+            'user_id' => $user['id'],
             'name' => $name,
             'words' => [],
             'score' => null,
@@ -22,7 +24,7 @@ if ($requestMethod === 'POST' && ($_POST['action'] ?? '') === 'add-list') {
 
 $lists = array_values(array_filter(
     readData('lists.json'),
-    fn($list) => isset($list['name'])
+    fn($list) => isset($list['name']) && ($list['user_id'] ?? '') === $user['id']
 ));
 
 pageHeader('Mijn lijsten', 'lists');

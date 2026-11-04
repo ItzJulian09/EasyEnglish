@@ -33,7 +33,7 @@ input {
 .auth-page {
   display: grid;
   place-items: center;
-  min-height: 100vh;
+  min-height: calc(100vh - 195px);
   padding: 20px;
 }
 
@@ -44,6 +44,39 @@ input {
   border: 1px solid var(--line);
   border-radius: 12px;
   box-shadow: 0 8px 25px #8e20251a;
+}
+
+.auth-card h1 {
+  color: var(--text);
+  font-size: 20px;
+}
+
+.auth-card .primary-button {
+  display: block;
+  margin: 0 auto;
+}
+
+.terms {
+  display: flex;
+  grid-template-columns: auto 1fr;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 9px;
+  font-weight: normal;
+}
+
+.terms input {
+  width: 13px;
+  height: 13px;
+  margin: 0;
+  padding: 0;
+}
+
+.auth-nav-link {
+  color: #fff;
+  font-size: 10px;
+  font-weight: bold;
+  text-decoration: none;
 }
 
 .auth-logo {
@@ -148,6 +181,8 @@ dialog form {
 
 .brand {
   gap: 18px;
+  color: #fff;
+  text-decoration: none;
 }
 
 .logo {
@@ -159,6 +194,7 @@ dialog form {
 }
 
 .brand-name {
+  color: #fff;
   font-size: 11px;
   font-weight: bold;
 }
@@ -187,6 +223,12 @@ dialog form {
 
 .account {
   gap: 13px;
+}
+
+.account,
+.account a,
+.account span {
+  color: #fff;
 }
 
 .language-switch {
