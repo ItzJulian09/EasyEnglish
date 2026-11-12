@@ -15,9 +15,9 @@ $listRepository = new WordListRepository();
 $listId = (int) ($_GET['id'] ?? 0);
 $list = $listRepository->findById($listId);
 
-// Alleen openbare lijsten, of je eigen lijst, mag je bekijken
+// Alleen openbare lijsten, of je eigen lijst, mag je bekijken. Een beheerder mag alles zien.
 $isOwner = $list && (int) $list['user_id'] === $userId;
-$isVisible = $list && ($isOwner || ($list['is_public'] && $list['is_published']));
+$isVisible = $list && ($isOwner || isAdmin() || ($list['is_public'] && $list['is_published']));
 
 if (!$isVisible) {
     setFlash(t('Deze lijst bestaat niet of is niet openbaar.'), 'error');
@@ -32,6 +32,12 @@ if (isPost()) {
     if ($action === 'like') {
         $listRepository->toggleLike($listId, $userId);
         redirect('lijst.php?id=' . $listId);
+    }
+
+    if ($action === 'admin-delete' && isAdmin()) {
+        $listRepository->deleteAsAdmin($listId);
+        setFlash(t('De toets is verwijderd.'));
+        redirect('beheer.php');
     }
 
     if ($action === 'save') {
@@ -95,6 +101,17 @@ pageHeader($list['title'], 'lists');
               <input type="hidden" name="action" value="save">
               <button type="submit" class="btn btn-outline-dark btn-block">
                 <?= icon('plus-small', 16) ?> <?= t('Opslaan in mijn Bibliotheek') ?>
+              </button>
+            </form>
+          <?php endif; ?>
+
+          <?php if (isAdmin()): ?>
+            <form method="post" class="confirm-delete"
+                  data-confirm="<?= e(t('Weet je zeker dat je "%s" wilt verwijderen? Dit kan niet ongedaan worden.', $list['title'])) ?>">
+              <?= csrfField() ?>
+              <input type="hidden" name="action" value="admin-delete">
+              <button type="submit" class="btn btn-soft btn-block">
+                <?= icon('trash') ?> <?= t('Toets verwijderen (beheerder)') ?>
               </button>
             </form>
           <?php endif; ?>

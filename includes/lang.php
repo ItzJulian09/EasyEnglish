@@ -78,9 +78,7 @@ const TRANSLATIONS = [
     'Openbare Bibliotheek' => 'Public Library',
     'Ontdek duizenden gratis lijsten gedeeld door taaldocenten en de EasyEnglish-community.'
         => 'Discover thousands of free lists shared by language teachers and the EasyEnglish community.',
-    'Zoek op onderwerp, niveau of auteur...' => 'Search by topic, level or author...',
-    'Niveau' => 'Level',
-    'Alle' => 'All',
+    'Zoek op onderwerp of auteur...' => 'Search by topic or author...',
     'Sorteer' => 'Sort',
     'Meest Populair' => 'Most Popular',
     'Nieuwste' => 'Newest',
@@ -177,6 +175,21 @@ const TRANSLATIONS = [
     'Naam Woordenlijst' => 'Word List Name',
     'Geen pogingen gevonden voor deze zoekterm.' => 'No attempts found for this search term.',
     'Je hebt nog geen toetsen gemaakt.' => "You haven't taken any tests yet.",
+
+    // Beheer (admin)
+    'Beheer' => 'Admin',
+    'Alleen een beheerder mag deze pagina bekijken.' => 'Only an administrator can view this page.',
+    'Alle toetsen van alle gebruikers. Als beheerder kun je elke toets verwijderen.'
+        => 'All tests from all users. As an administrator you can delete any test.',
+    'Zoek op toetsnaam of maker...' => 'Search by test name or creator...',
+    'Status' => 'Status',
+    'Openbaar' => 'Public',
+    'Privé' => 'Private',
+    'De toets is verwijderd.' => 'The test has been deleted.',
+    'Geen toetsen gevonden.' => 'No tests found.',
+    'Weet je zeker dat je "%s" wilt verwijderen? Dit kan niet ongedaan worden.'
+        => 'Are you sure you want to delete "%s"? This cannot be undone.',
+    'Toets verwijderen (beheerder)' => 'Delete test (admin)',
 
     // Instellingen
     'Beheer je accountgegevens, taal en privacyvoorkeuren.' => 'Manage your account details, language and privacy preferences.',

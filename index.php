@@ -21,11 +21,10 @@ if (isPost() && ($_POST['action'] ?? '') === 'delete-list') {
 
 // ---------- Zoeken, filteren en sorteren in de bibliotheek ----------
 $search = trim($_GET['zoek'] ?? '');
-$level = $_GET['niveau'] ?? '';
 $sort = $_GET['sorteer'] ?? 'populair';
 
 $myLists = $listRepository->getListsForUser($userId);
-$publicLists = $listRepository->getPublicLists($userId, $search, $level, $sort);
+$publicLists = $listRepository->getPublicLists($userId, $search, $sort);
 
 pageHeader(t('Mijn lijsten'), 'lists');
 ?>
@@ -101,12 +100,7 @@ pageHeader(t('Mijn lijsten'), 'lists');
     <form method="get" action="index.php#bibliotheek" class="search-filters">
       <label class="search-input">
         <?= icon('search', 18) ?>
-        <input type="search" name="zoek" value="<?= e($search) ?>" placeholder="<?= t('Zoek op onderwerp, niveau of auteur...') ?>">
-      </label>
-
-      <label class="filter-pill">
-        </select>
-        <?= icon('chevron-down', 14) ?>
+        <input type="search" name="zoek" value="<?= e($search) ?>" placeholder="<?= t('Zoek op onderwerp of auteur...') ?>">
       </label>
 
       <label class="filter-pill">
@@ -131,7 +125,6 @@ pageHeader(t('Mijn lijsten'), 'lists');
           <div class="card-head">
             <div class="tags">
               <?php if ($list['category']): ?><span class="tag"><?= e($list['category']) ?></span><?php endif; ?>
-              <?php if ($list['level']): ?><span class="tag"><?= e($list['level']) ?></span><?php endif; ?>
             </div>
             <h3><?= e($list['title']) ?></h3>
             <p><?= t('Door') ?>: <?= e($list['author_name']) ?></p>

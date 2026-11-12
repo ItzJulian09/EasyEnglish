@@ -87,6 +87,30 @@ function requireLogin(): array
     return $user;
 }
 
+/**
+ * Is de ingelogde gebruiker een beheerder (admin)?
+ */
+function isAdmin(): bool
+{
+    $user = currentUser();
+
+    return $user !== null && !empty($user['is_admin']);
+}
+
+/**
+ * Alleen beheerders mogen verder, anderen gaan terug naar de homepage.
+ */
+function requireAdmin(): array
+{
+    $user = requireLogin();
+    if (!isAdmin()) {
+        setFlash(t('Alleen een beheerder mag deze pagina bekijken.'), 'error');
+        redirect('index.php');
+    }
+
+    return $user;
+}
+
 function loginUser(array $user): void
 {
     session_regenerate_id(true); // nieuwe sessie-id tegen session fixation
@@ -250,6 +274,9 @@ function pageHeader(string $title, string $active = ''): void
           <a class="<?= $active === 'lists' ? 'active' : '' ?>" href="index.php"><?= t('Mijn lijsten') ?></a>
           <a class="<?= $active === 'builder' ? 'active' : '' ?>" href="toetsbouwer.php"><?= t('Toets bouwer') ?></a>
           <a class="<?= $active === 'progress' ? 'active' : '' ?>" href="voortgang.php"><?= t('Voortgang') ?></a>
+          <?php if (isAdmin()): ?>
+            <a class="<?= $active === 'admin' ? 'active' : '' ?>" href="beheer.php"><?= t('Beheer') ?></a>
+          <?php endif; ?>
         </nav>
 
         <div class="header-right">

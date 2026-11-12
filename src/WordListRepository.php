@@ -9,9 +9,6 @@ namespace App;
  */
 class WordListRepository
 {
-    // De niveaus die je kunt kiezen (ERK-niveaus)
-    public const LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
-
     // Toegestane manieren om de bibliotheek te sorteren
     public const SORT_OPTIONS = [
         'populair' => 'like_count DESC, word_lists.title ASC',
@@ -63,11 +60,10 @@ class WordListRepository
     /**
      * Openbare lijsten van andere gebruikers voor de bibliotheek.
      *
-     * @param string $search Zoekt in titel, categorie, niveau en naam van de maker
-     * @param string $level  Bijvoorbeeld "B1", of leeg voor alle niveaus
+     * @param string $search Zoekt in titel, categorie en naam van de maker
      * @param string $sort   Een sleutel uit SORT_OPTIONS
      */
-    public function getPublicLists(int $userId, string $search, string $level, string $sort): array
+    public function getPublicLists(int $userId, string $search, string $sort): array
     {
         $sql = 'SELECT word_lists.*, users.full_name AS author_name,
                        (SELECT COUNT(*) FROM words WHERE words.list_id = word_lists.id) AS word_count,
@@ -80,15 +76,9 @@ class WordListRepository
         $values = [$userId];
 
         if ($search !== '') {
-            $sql .= ' AND (word_lists.title LIKE ? OR word_lists.category LIKE ?
-                           OR word_lists.level LIKE ? OR users.full_name LIKE ?)';
+            $sql .= ' AND (word_lists.title LIKE ? OR word_lists.category LIKE ? OR users.full_name LIKE ?)';
             $searchText = '%' . $search . '%';
-            array_push($values, $searchText, $searchText, $searchText, $searchText);
-        }
-
-        if (in_array($level, self::LEVELS, true)) {
-            $sql .= ' AND word_lists.level = ?';
-            $values[] = $level;
+            array_push($values, $searchText, $searchText, $searchText);
         }
 
         // De sortering komt uit een vaste lijst, dus gebruikersinvoer komt nooit direct in de SQL.
@@ -120,7 +110,7 @@ class WordListRepository
     /**
      * Maakt een nieuwe lijst met woorden en geeft het nieuwe id terug.
      *
-     * $data bevat: title, description, category, level, direction, is_public, is_published
+     * $data bevat: title, description, category, direction, is_public, is_published
      * $words is een array met ['dutch' => ..., 'english' => ...]
      */
     public function create(int $userId, array $data, array $words): int
@@ -129,15 +119,14 @@ class WordListRepository
         $database->beginTransaction();
 
         $statement = $database->prepare(
-            'INSERT INTO word_lists (user_id, title, description, category, level, direction, is_public, is_published)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO word_lists (user_id, title, description, category, direction, is_public, is_published)
+             VALUES (?, ?, ?, ?, ?, ?, ?)'
         );
         $statement->execute([
             $userId,
             $data['title'],
             $data['description'],
             $data['category'],
-            $data['level'],
             $data['direction'],
             $data['is_public'],
             $data['is_published'],
@@ -160,14 +149,13 @@ class WordListRepository
 
         $statement = $database->prepare(
             'UPDATE word_lists
-             SET title = ?, description = ?, category = ?, level = ?, direction = ?, is_public = ?, is_published = ?
+             SET title = ?, description = ?, category = ?, direction = ?, is_public = ?, is_published = ?
              WHERE word_lists.id = ?'
         );
         $statement->execute([
             $data['title'],
             $data['description'],
             $data['category'],
-            $data['level'],
             $data['direction'],
             $data['is_public'],
             $data['is_published'],
@@ -194,6 +182,43 @@ class WordListRepository
     }
 
     /**
+     * Verwijdert een lijst van wie dan ook. Alleen voor beheerders!
+     * De woorden, pogingen en likes gaan automatisch mee (ON DELETE CASCADE).
+     */
+    public function deleteAsAdmin(int $listId): void
+    {
+        $statement = Database::getConnection()->prepare('DELETE FROM word_lists WHERE word_lists.id = ?');
+        $statement->execute([$listId]);
+    }
+
+    /**
+     * Alle lijsten van alle gebruikers, voor de beheerpagina.
+     * Met $search zoek je op titel of op naam/e-mail van de maker.
+     */
+    public function getAllLists(string $search = ''): array
+    {
+        $sql = 'SELECT word_lists.id, word_lists.title, word_lists.is_public, word_lists.is_published,
+                       word_lists.created_at, users.full_name AS author_name, users.email AS author_email,
+                       (SELECT COUNT(*) FROM words WHERE words.list_id = word_lists.id) AS word_count
+                FROM word_lists
+                INNER JOIN users ON users.id = word_lists.user_id';
+        $values = [];
+
+        if ($search !== '') {
+            $sql .= ' WHERE word_lists.title LIKE ? OR users.full_name LIKE ? OR users.email LIKE ?';
+            $searchText = '%' . $search . '%';
+            $values = [$searchText, $searchText, $searchText];
+        }
+
+        $sql .= ' ORDER BY word_lists.created_at DESC';
+
+        $statement = Database::getConnection()->prepare($sql);
+        $statement->execute($values);
+
+        return $statement->fetchAll();
+    }
+
+    /**
      * Kopieert een (openbare) lijst naar de eigen lijsten van een gebruiker.
      */
     public function copyToUser(int $listId, int $userId): int
@@ -205,7 +230,6 @@ class WordListRepository
             'title'        => $list['title'],
             'description'  => $list['description'],
             'category'     => $list['category'],
-            'level'        => $list['level'],
             'direction'    => $list['direction'],
             'is_public'    => 0, // een kopie is standaard privé
             'is_published' => 1,

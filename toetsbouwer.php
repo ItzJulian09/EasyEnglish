@@ -29,7 +29,6 @@ if ($listId !== null) {
         'title'       => $list['title'],
         'description' => $list['description'] ?? '',
         'category'    => $list['category'] ?? '',
-        'level'       => $list['level'] ?? '',
         'direction'   => $list['direction'],
         'is_public'   => (int) $list['is_public'],
     ];
@@ -40,7 +39,6 @@ if ($listId !== null) {
         'title'       => '',
         'description' => '',
         'category'    => '',
-        'level'       => '',
         'direction'   => $user['default_direction'],
         'is_public'   => (int) $user['default_public'],
     ];
@@ -55,7 +53,6 @@ if (isPost()) {
         'title'       => trim($_POST['title'] ?? ''),
         'description' => trim($_POST['description'] ?? ''),
         'category'    => trim($_POST['category'] ?? ''),
-        'level'       => $form['level'], // niveau kies je niet in de toetsbouwer, de oude waarde blijft staan
         'direction'   => ($_POST['direction'] ?? '') === 'en-nl' ? 'en-nl' : 'nl-en',
         'is_public'   => isset($_POST['is_public']) ? 1 : 0,
     ];
@@ -94,7 +91,6 @@ if (isPost()) {
         $data = $form;
         $data['description'] = $form['description'] !== '' ? $form['description'] : null;
         $data['category'] = $form['category'] !== '' ? $form['category'] : null;
-        $data['level'] = $form['level'] !== '' ? $form['level'] : null;
         $data['is_published'] = $isPublish ? 1 : 0;
 
         if ($listId !== null) {

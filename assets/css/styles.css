@@ -1156,6 +1156,36 @@ select.input {
   width: 166px;
 }
 
+/* Beheerpagina */
+.col-small {
+  width: 110px;
+}
+
+.col-actions {
+  width: 60px;
+  text-align: right;
+}
+
+.col-actions form {
+  display: inline-block;
+  margin: 0;
+}
+
+.table-link {
+  text-decoration: none;
+}
+
+.table-link:hover {
+  text-decoration: underline;
+}
+
+.muted {
+  display: block;
+  margin-top: 2px;
+  color: var(--brown);
+  font-size: 12px;
+}
+
 /* =====================================================
    Voortgang
    ===================================================== */
