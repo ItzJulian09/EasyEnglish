@@ -105,11 +105,6 @@ pageHeader(t('Mijn lijsten'), 'lists');
       </label>
 
       <label class="filter-pill">
-        <select name="niveau" class="auto-submit">
-          <option value=""><?= t('Niveau') ?>: <?= t('Alle') ?></option>
-          <?php foreach (WordListRepository::LEVELS as $levelOption): ?>
-            <option value="<?= $levelOption ?>" <?= $level === $levelOption ? 'selected' : '' ?>><?= t('Niveau') ?>: <?= $levelOption ?></option>
-          <?php endforeach; ?>
         </select>
         <?= icon('chevron-down', 14) ?>
       </label>
