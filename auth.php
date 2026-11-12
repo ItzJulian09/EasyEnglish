@@ -1,118 +1,132 @@
 <?php
+// =====================================================
+// auth.php
+// Gedeelde code voor login.php en register.php.
+// $isRegister wordt in die bestanden op true/false gezet.
+// =====================================================
+
 require_once __DIR__ . '/includes/functions.php';
+
+use App\UserRepository;
 
 if (currentUser()) {
     redirect('index.php');
 }
 
+$userRepository = new UserRepository();
 $error = '';
-$requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
-if ($requestMethod === 'POST') {
-    $name = trim($_POST['name'] ?? '');
-    $email = strtolower(trim($_POST['email'] ?? ''));
+// Wat de gebruiker al had ingevuld, zodat dat blijft staan bij een fout
+$fullName = trim($_POST['full_name'] ?? '');
+$email = strtolower(trim($_POST['email'] ?? ''));
+
+if (isPost()) {
+    checkCsrf();
     $password = $_POST['password'] ?? '';
-    $users = readData('users.json');
 
     if ($isRegister) {
-        $emailExists = array_filter($users, fn($user) => $user['email'] === $email);
-
-        if ($name === '') {
-            $error = 'Vul je volledige naam in.';
+        // ---------- Registreren ----------
+        if ($fullName === '') {
+            $error = t('Vul je volledige naam in.');
         } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $error = 'Vul een geldig e-mailadres in.';
-        } elseif (strlen($password) < 6) {
-            $error = 'Je wachtwoord moet minimaal 6 tekens bevatten.';
+            $error = t('Vul een geldig e-mailadres in.');
+        } elseif (strlen($password) < 8) {
+            $error = t('Je wachtwoord moet minimaal 8 tekens bevatten.');
         } elseif (!isset($_POST['terms'])) {
-            $error = 'Je moet akkoord gaan met de voorwaarden.';
-        } elseif ($emailExists) {
-            $error = 'Dit e-mailadres bestaat al.';
+            $error = t('Je moet akkoord gaan met de voorwaarden.');
+        } elseif ($userRepository->findByEmail($email)) {
+            $error = t('Dit e-mailadres is al in gebruik.');
         } else {
-            $user = [
-                'id' => uniqid('user_', true),
-                'name' => $name,
-                'email' => $email,
-                'password' => password_hash($password, PASSWORD_DEFAULT),
-            ];
-            $users[] = $user;
-            saveData('users.json', $users);
-            $_SESSION['user_id'] = $user['id'];
+            $newUserId = $userRepository->create($fullName, $email, $password, currentLanguage());
+            loginUser($userRepository->findById($newUserId));
+            setFlash(t('Welkom bij EasyEnglish! Maak je eerste woordenlijst aan.'));
             redirect('index.php');
         }
     } else {
-        foreach ($users as $user) {
-            if ($user['email'] === $email && password_verify($password, $user['password'])) {
-                $_SESSION['user_id'] = $user['id'];
-                redirect('index.php');
+        // ---------- Inloggen ----------
+        $user = $userRepository->findByEmail($email);
+
+        if ($user && password_verify($password, $user['password_hash'])) {
+            loginUser($user);
+
+            // "Onthoud mij": de sessie-cookie blijft 30 dagen bestaan
+            if (isset($_POST['remember'])) {
+                $thirtyDays = 60 * 60 * 24 * 30;
+                setcookie(session_name(), session_id(), time() + $thirtyDays, '/');
             }
+
+            redirect('index.php');
         }
 
-        $error = 'E-mailadres of wachtwoord is niet juist.';
+        $error = t('E-mailadres of wachtwoord is niet juist.');
     }
 }
-?>
-<!doctype html>
-<html lang="nl">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><?= $isRegister ? 'Registreren' : 'Inloggen' ?> - Easy English</title>
-  <link rel="stylesheet" href="assets/css/styles.css">
-</head>
-<body>
-  <?php publicHeader(); ?>
-  <main class="auth-page">
-    <div class="auth-card">
-      <h1><?= $isRegister ? 'Account aanmaken' : 'Welkom terug' ?></h1>
-      <p><?= $isRegister ? 'Begin direct met het bouwen van jouw Engelse woordenschat.' : 'Log in om verder te leren.' ?></p>
 
-      <?php if ($error): ?>
-        <div class="error"><?= e($error) ?></div>
+pageHeader($isRegister ? t('Registreren') : t('Inloggen'));
+?>
+<main class="auth-page">
+  <div class="auth-card <?= $isRegister ? 'auth-card-wide' : '' ?>">
+    <div class="card-header-center">
+      <h1><?= $isRegister ? t('Account aanmaken') : t('Inloggen bij EasyEnglish') ?></h1>
+      <p><?= $isRegister ? t('Begin direct met het bouwen van jouw Engelse woordenschat') : t('Leer Engels in je eigen tempo') ?></p>
+    </div>
+
+    <?php if ($error): ?>
+      <div class="flash flash-error"><?= e($error) ?></div>
+    <?php endif; ?>
+
+    <form method="post" class="form-stack">
+      <?= csrfField() ?>
+
+      <?php if ($isRegister): ?>
+        <label class="field">
+          <span class="field-label"><?= t('Volledige naam') ?></span>
+          <input class="input" type="text" name="full_name" required value="<?= e($fullName) ?>" placeholder="<?= t('bijv. Sven de Vries') ?>">
+        </label>
       <?php endif; ?>
 
-      <form method="post">
-        <?php if ($isRegister): ?>
-          <label>
-            Volledige naam
-            <input type="text" name="name" required placeholder="bijv. Sven de Vries">
-          </label>
-        <?php endif; ?>
-        <label>
-          E-mailadres
-          <input type="email" name="email" required placeholder="bijv. sven@voorbeeld.nl">
-        </label>
-        <label>
-          Wachtwoord
-          <input type="password" name="password" minlength="6" required placeholder="Minimaal 6 tekens">
-        </label>
-        <?php if ($isRegister): ?>
-          <label class="terms">
-            <input type="checkbox" name="terms" required>
-            <span>Ik ga akkoord met de Algemene Voorwaarden en het Privacybeleid van Lexilo.</span>
-          </label>
-        <?php endif; ?>
-        <button class="primary-button" type="submit">
-          <?= $isRegister ? 'Account maken' : 'Inloggen' ?>
-        </button>
-      </form>
+      <label class="field">
+        <span class="field-label"><?= t('E-mailadres') ?></span>
+        <input class="input" type="email" name="email" required value="<?= e($email) ?>"
+               placeholder="<?= $isRegister ? t('bijv. sven@voorbeeld.nl') : 'naam.achternaam@gmail.com' ?>">
+      </label>
 
-      <a class="auth-link" href="<?= $isRegister ? 'login.php' : 'register.php' ?>">
-        <?= $isRegister ? 'Al een account? Inloggen' : 'Nog geen account? Registreren' ?>
-      </a>
-    </div>
-  </main>
-  <footer>
-    <div class="footer-inner">
-      <div class="footer-about">
-        <h2>EasyEnglish</h2>
-        <p>Oefen woordenlijsten, bouw toetsen en volg je<br>voortgang in een rustige, overzichtelijke<br>leeromgeving.</p>
-        <small>© 2026 EasyEnglish. Alle rechten voorbehouden.</small>
+      <label class="field">
+        <span class="field-label"><?= t('Wachtwoord') ?></span>
+        <span class="input input-with-icon">
+          <input type="password" name="password" required <?= $isRegister ? 'minlength="8"' : '' ?>
+                 placeholder="<?= $isRegister ? t('Minimaal 8 tekens') : '••••••••••••••' ?>">
+          <button type="button" class="toggle-password" title="<?= t('Wachtwoord tonen') ?>"><?= icon('eye-off', 18) ?></button>
+        </span>
+      </label>
+
+      <?php if ($isRegister): ?>
+        <label class="checkbox-row checkbox-small">
+          <input type="checkbox" name="terms" required>
+          <span class="checkbox-box"><?= icon('check', 10) ?></span>
+          <span><?= t('Ik ga akkoord met de <b>Algemene Voorwaarden</b> en het <b>Privacybeleid</b> van EasyEnglish.') ?></span>
+        </label>
+      <?php else: ?>
+        <label class="checkbox-row">
+          <input type="checkbox" name="remember" checked>
+          <span class="checkbox-box"><?= icon('check', 10) ?></span>
+          <span><?= t('Onthoud mij') ?></span>
+        </label>
+      <?php endif; ?>
+
+      <div class="auth-actions">
+        <button class="btn btn-primary" type="submit">
+          <?= $isRegister ? t('Account Aanmaken') : t('Inloggen') ?>
+        </button>
+        <p class="auth-switch">
+          <?php if ($isRegister): ?>
+            <?= t('Heb je al een account?') ?> <a href="login.php"><?= t('Inloggen') ?></a>
+          <?php else: ?>
+            <?= t('Nog geen account?') ?> <a href="register.php"><?= t('Registreren') ?></a>
+          <?php endif; ?>
+        </p>
       </div>
-      <div><h3>Product</h3><a href="index.php">Mijn lijsten</a><a href="index.php#toetsen">Toets bouwer</a><a href="index.php#voortgang">Voortgang</a></div>
-      <div><h3>Openbare bibliotheek</h3><a href="index.php#bibliotheek">Zoek lijsten</a><a href="#">Niveaus</a><a href="#">Populair</a></div>
-      <div><h3>Contact</h3><a href="#">Hulp & feedback</a><a href="#">Privacy</a><a href="#">Voor docenten</a></div>
-    </div>
-    <div class="footer-links"><a href="#">Privacy</a><a href="#">Voorwaarden</a></div>
-  </footer>
-</body>
-</html>
+    </form>
+  </div>
+</main>
+<?php pageFooter(); ?>
