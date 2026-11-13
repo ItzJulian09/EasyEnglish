@@ -1,5 +1,5 @@
 <?php
-// Gemaakte toetsen en scores (tabel attempts)
+
 
 class Attempt
 {
@@ -10,7 +10,7 @@ class Attempt
         $this->db = Database::connect();
     }
 
-    // Slaat een gemaakte toets op en geeft de score in procenten terug
+   
     public function save($userId, $listId, $goed, $totaal)
     {
         $score = round($goed / $totaal * 100);
@@ -20,7 +20,7 @@ class Attempt
         return $score;
     }
 
-    // Alle pogingen van een gebruiker, nieuwste eerst
+
     public function getForUser($userId, $zoek)
     {
         $stmt = $this->db->prepare('
@@ -34,7 +34,7 @@ class Attempt
         return $stmt->fetchAll();
     }
 
-    // De hoogste score van een gebruiker
+    
     public function getBest($userId)
     {
         $stmt = $this->db->prepare('

@@ -1,5 +1,4 @@
 <?php
-// Alles wat met gebruikers te maken heeft (tabel users)
 
 class User
 {
@@ -24,7 +23,7 @@ class User
         return $stmt->fetch();
     }
 
-    // Geeft de gebruiker terug als e-mail en wachtwoord kloppen, anders false
+    
     public function login($email, $wachtwoord)
     {
         $user = $this->getByEmail($email);

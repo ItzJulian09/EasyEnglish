@@ -1,5 +1,4 @@
 <?php
-// Woordenlijsten (tabel word_lists) en de woorden erin (tabel words)
 
 class WordList
 {
@@ -41,7 +40,7 @@ class WordList
         return $stmt->fetchAll();
     }
 
-    // Openbare lijsten voor de bibliotheek. Je kunt zoeken op titel, categorie of maker.
+    
     public function getPublicLists($zoek, $sorteer)
     {
         $sql = '
@@ -65,7 +64,7 @@ class WordList
         return $stmt->fetchAll();
     }
 
-    // Alle lijsten van iedereen (voor de beheerder)
+    
     public function getAllLists($zoek)
     {
         $stmt = $this->db->prepare('
@@ -87,7 +86,7 @@ class WordList
         return $stmt->fetchAll();
     }
 
-    // Nieuwe lijst maken, geeft het id van de nieuwe lijst terug
+    
     public function create($userId, $titel, $omschrijving, $categorie, $richting, $openbaar, $gepubliceerd)
     {
         $stmt = $this->db->prepare('
@@ -108,7 +107,7 @@ class WordList
         $stmt->execute([$titel, $omschrijving, $categorie, $richting, $openbaar, $gepubliceerd, $id]);
     }
 
-    // Eerst alle oude woorden weg, daarna de nieuwe erin
+    
     public function saveWords($listId, $woorden)
     {
         $stmt = $this->db->prepare('DELETE FROM words WHERE list_id = ?');
@@ -122,21 +121,21 @@ class WordList
         }
     }
 
-    // Verwijderen mag alleen als de lijst van jou is
+    
     public function delete($id, $userId)
     {
         $stmt = $this->db->prepare('DELETE FROM word_lists WHERE id = ? AND user_id = ?');
         $stmt->execute([$id, $userId]);
     }
 
-    // De beheerder mag elke lijst verwijderen
+    n
     public function deleteAsAdmin($id)
     {
         $stmt = $this->db->prepare('DELETE FROM word_lists WHERE id = ?');
         $stmt->execute([$id]);
     }
 
-    // Een openbare lijst kopiëren naar mijn eigen lijsten
+    
     public function copy($id, $userId)
     {
         $lijst = $this->getById($id);

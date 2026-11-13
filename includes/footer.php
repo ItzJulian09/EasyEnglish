@@ -18,20 +18,13 @@
                 <a href="index.php?sorteer=naam#bibliotheek">Op naam</a>
                 <a href="index.php?sorteer=nieuwste#bibliotheek">Nieuwste</a>
             </div>
-            <div class="footer-col">
-                <h3>Contact</h3>
-                <a href="#">Hulp &amp; feedback</a>
-                <a href="#">Privacy</a>
-                <a href="#">Voor docenten</a>
-            </div>
+            
         </div>
     </div>
 
     <div class="footer-bottom">
         <p>&copy; 2026 EasyEnglish. Alle rechten voorbehouden.</p>
-        <div class="footer-legal">
-            <a href="#">Privacy</a>
-            <a href="#">Voorwaarden</a>
+       
         </div>
     </div>
 </footer>
