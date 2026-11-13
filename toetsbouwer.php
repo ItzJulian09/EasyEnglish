@@ -1,220 +1,222 @@
 <?php
-// =====================================================
-// toetsbouwer.php - Een woordenlijst maken of bewerken
-// Nieuw:     toetsbouwer.php
-// Bewerken:  toetsbouwer.php?id=4
-// =====================================================
+require 'includes/init.php';
 
-require_once __DIR__ . '/includes/functions.php';
-
-use App\WordListRepository;
-
-$user = requireLogin();
-$userId = (int) $user['id'];
-$listRepository = new WordListRepository();
-
-$listId = isset($_GET['id']) ? (int) $_GET['id'] : null;
-$errors = [];
-
-// ---------- Startwaarden van het formulier ----------
-if ($listId !== null) {
-    // Bestaande lijst: alleen de eigenaar mag hem bewerken
-    $list = $listRepository->findById($listId);
-    if (!$list || (int) $list['user_id'] !== $userId) {
-        setFlash(t('Deze lijst bestaat niet of is niet van jou.'), 'error');
-        redirect('index.php');
-    }
-
-    $form = [
-        'title'       => $list['title'],
-        'description' => $list['description'] ?? '',
-        'category'    => $list['category'] ?? '',
-        'direction'   => $list['direction'],
-        'is_public'   => (int) $list['is_public'],
-    ];
-    $words = $listRepository->getWords($listId);
-} else {
-    // Nieuwe lijst: gebruik de standaardinstellingen van de gebruiker
-    $form = [
-        'title'       => '',
-        'description' => '',
-        'category'    => '',
-        'direction'   => $user['default_direction'],
-        'is_public'   => (int) $user['default_public'],
-    ];
-    $words = [];
+if (!$user) {
+    header('Location: login.php');
+    exit;
 }
 
-// ---------- Opslaan ----------
-if (isPost()) {
-    checkCsrf();
+$wordList = new WordList();
+$fout = '';
 
-    $form = [
-        'title'       => trim($_POST['title'] ?? ''),
-        'description' => trim($_POST['description'] ?? ''),
-        'category'    => trim($_POST['category'] ?? ''),
-        'direction'   => ($_POST['direction'] ?? '') === 'en-nl' ? 'en-nl' : 'nl-en',
-        'is_public'   => isset($_POST['is_public']) ? 1 : 0,
-    ];
+// Standaardwaarden voor een nieuwe lijst
+$id = 0;
+$lijstTitel = '';
+$omschrijving = '';
+$categorie = '';
+$richting = 'nl-en';
+$openbaar = $user['default_public'];
+$woorden = [];
 
-    $isPublish = ($_POST['action'] ?? '') === 'publish';
+// Bestaande lijst bewerken? (toetsbouwer.php?id=3)
+if (isset($_GET['id'])) {
+    $lijst = $wordList->getById($_GET['id']);
 
-    // Woordparen uit het formulier halen. Lege rijen slaan we over.
-    $words = [];
-    $dutchWords = $_POST['dutch'] ?? [];
-    $englishWords = $_POST['english'] ?? [];
+    // Alleen je eigen lijst mag je bewerken
+    if (!$lijst || $lijst['user_id'] != $user['id']) {
+        header('Location: index.php');
+        exit;
+    }
 
-    foreach ($dutchWords as $index => $dutch) {
-        $dutch = trim($dutch);
-        $english = trim($englishWords[$index] ?? '');
+    $id = $lijst['id'];
+    $lijstTitel = $lijst['title'];
+    $omschrijving = $lijst['description'];
+    $categorie = $lijst['category'];
+    $richting = $lijst['direction'];
+    $openbaar = $lijst['is_public'];
+    $woorden = $wordList->getWords($id);
+}
 
-        if ($dutch === '' && $english === '') {
-            continue; // helemaal lege rij
+// Formulier verstuurd: opslaan
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $lijstTitel = trim($_POST['titel']);
+    $omschrijving = trim($_POST['omschrijving']);
+    $categorie = trim($_POST['categorie']);
+    $richting = $_POST['richting'];
+    $openbaar = isset($_POST['openbaar']) ? 1 : 0;
+
+    // Welke knop is ingedrukt? "Publiceren" of "Concept Opslaan"
+    $gepubliceerd = ($_POST['knop'] == 'publiceren') ? 1 : 0;
+
+    // De woorden uit het formulier halen, lege rijen overslaan
+    $woorden = [];
+    $nederlands = [];
+    $engels = [];
+    if (isset($_POST['nederlands'])) {
+        $nederlands = $_POST['nederlands'];
+        $engels = $_POST['engels'];
+    }
+
+    for ($i = 0; $i < count($nederlands); $i++) {
+        $nl = trim($nederlands[$i]);
+        $en = trim($engels[$i]);
+
+        if ($nl == '' && $en == '') {
+            continue;
         }
-        if ($dutch === '' || $english === '') {
-            $errors[] = t('Vul bij elke rij zowel het Nederlandse woord als de Engelse vertaling in.');
+        if ($nl == '' || $en == '') {
+            $fout = 'Vul bij elke rij zowel het Nederlandse als het Engelse woord in.';
         }
-
-        $words[] = ['dutch' => $dutch, 'english' => $english];
+        $woorden[] = ['dutch' => $nl, 'english' => $en];
     }
 
-    if ($form['title'] === '') {
-        $errors[] = t('Geef je toets een titel.');
+    if ($lijstTitel == '') {
+        $fout = 'Geef je toets een titel.';
+    } elseif ($gepubliceerd == 1 && count($woorden) == 0) {
+        $fout = 'Voeg minimaal één woord toe om te publiceren.';
     }
-    if ($isPublish && count($words) === 0) {
-        $errors[] = t('Voeg minimaal één woord toe om te publiceren.');
-    }
 
-    $errors = array_unique($errors);
-
-    if (!$errors) {
-        $data = $form;
-        $data['description'] = $form['description'] !== '' ? $form['description'] : null;
-        $data['category'] = $form['category'] !== '' ? $form['category'] : null;
-        $data['is_published'] = $isPublish ? 1 : 0;
-
-        if ($listId !== null) {
-            $listRepository->update($listId, $data, $words);
+    if ($fout == '') {
+        if ($id == 0) {
+            $id = $wordList->create($user['id'], $lijstTitel, $omschrijving, $categorie, $richting, $openbaar, $gepubliceerd);
         } else {
-            $listId = $listRepository->create($userId, $data, $words);
+            $wordList->update($id, $lijstTitel, $omschrijving, $categorie, $richting, $openbaar, $gepubliceerd);
         }
+        $wordList->saveWords($id, $woorden);
 
-        if ($isPublish) {
-            setFlash(t('Je woordenlijst is gepubliceerd!'));
-            redirect('index.php');
+        if ($gepubliceerd == 1) {
+            $_SESSION['melding'] = 'Je woordenlijst is gepubliceerd!';
+            header('Location: index.php');
+        } else {
+            $_SESSION['melding'] = 'Concept opgeslagen.';
+            header('Location: toetsbouwer.php?id=' . $id);
         }
-
-        setFlash(t('Concept opgeslagen.'));
-        redirect('toetsbouwer.php?id=' . $listId);
+        exit;
     }
 }
 
-pageHeader(t('Toets bouwer'), 'builder');
+$titel = 'Toets bouwer';
+$actief = 'bouwer';
+include 'includes/header.php';
 ?>
+
 <main class="page">
-  <?php showFlash(); ?>
+    <?php toonMelding(); ?>
 
-  <?php if ($errors): ?>
-    <div class="flash flash-error">
-      <?php foreach ($errors as $error): ?>
-        <div><?= e($error) ?></div>
-      <?php endforeach; ?>
-    </div>
-  <?php endif; ?>
+    <?php if ($fout != '') { ?>
+        <div class="flash flash-error"><?= $fout ?></div>
+    <?php } ?>
 
-  <form method="post" class="builder-layout" id="builder-form">
-    <?= csrfField() ?>
+    <form method="post" class="builder-layout">
+        <!-- Links: gegevens van de toets -->
+        <div class="meta-column">
+            <div class="card">
+                <h2 class="card-title">Toetsgegevens</h2>
 
-    <!-- ============ Linkerkolom: toetsgegevens ============ -->
-    <div class="meta-column">
-      <section class="card card-meta">
-        <h2 class="card-title"><?= t('Toetsgegevens') ?></h2>
+                <label class="field">
+                    <span class="field-label">Titel van de Toets</span>
+                    <input class="input" type="text" name="titel" value="<?= htmlspecialchars($lijstTitel) ?>" placeholder="bijv. Academische Kernwoorden" required>
+                </label>
 
-        <label class="field">
-          <span class="field-label"><?= t('Titel van de Toets') ?></span>
-          <input class="input" type="text" name="title" required maxlength="150"
-                 value="<?= e($form['title']) ?>" placeholder="<?= t('bijv. Academische Kernwoorden') ?>">
-        </label>
+                <label class="field">
+                    <span class="field-label">Categorie</span>
+                    <input class="input" type="text" name="categorie" value="<?= htmlspecialchars($categorie) ?>" placeholder="bijv. Alledaags">
+                </label>
 
-        <label class="field">
-          <span class="field-label"><?= t('Categorie') ?></span>
-          <input class="input" type="text" name="category" maxlength="50"
-                 value="<?= e($form['category']) ?>" placeholder="<?= t('bijv. Alledaags') ?>">
-        </label>
+                <label class="field">
+                    <span class="field-label">Omschrijving</span>
+                    <textarea class="input" name="omschrijving" rows="3" placeholder="Waar gaat deze lijst over?"><?= htmlspecialchars($omschrijving) ?></textarea>
+                </label>
 
-        <label class="field">
-          <span class="field-label"><?= t('Omschrijving') ?></span>
-          <textarea class="input" name="description" rows="3" maxlength="500"
-                    placeholder="<?= t('Waar gaat deze lijst over?') ?>"><?= e($form['description']) ?></textarea>
-        </label>
+                <div class="field">
+                    <span class="field-label">Taalrichting</span>
+                    <div class="segmented">
+                        <label>
+                            <input type="radio" name="richting" value="nl-en" <?= $richting == 'nl-en' ? 'checked' : '' ?>>
+                            <span>NL → EN</span>
+                        </label>
+                        <label>
+                            <input type="radio" name="richting" value="en-nl" <?= $richting == 'en-nl' ? 'checked' : '' ?>>
+                            <span>EN → NL</span>
+                        </label>
+                    </div>
+                </div>
 
-        <div class="field">
-          <span class="field-label"><?= t('Taalrichting') ?></span>
-          <div class="segmented">
-            <label>
-              <input type="radio" name="direction" value="nl-en" <?= $form['direction'] === 'nl-en' ? 'checked' : '' ?>>
-              <span>NL → EN</span>
-            </label>
-            <label>
-              <input type="radio" name="direction" value="en-nl" <?= $form['direction'] === 'en-nl' ? 'checked' : '' ?>>
-              <span>EN → NL</span>
-            </label>
-          </div>
-        </div>
-
-        <div class="field">
-          <span class="field-label"><?= t('Zichtbaarheid') ?></span>
-          <label class="switch-row">
-            <span class="switch-label"><?= icon('globe', 18) ?> <?= t('Openbaar maken') ?></span>
-            <input type="checkbox" name="is_public" class="switch-input" <?= $form['is_public'] ? 'checked' : '' ?>>
-            <span class="switch"></span>
-          </label>
-          <p class="help-text"><?= t('Indien openbaar, kunnen anderen je lijst zoeken en oefenen.') ?></p>
-        </div>
-      </section>
-    </div>
-
-    <!-- ============ Rechterkolom: woordenlijst ============ -->
-    <div class="words-column">
-      <section class="card">
-        <div class="words-header">
-          <h2 class="card-title">
-            <?= t('Woordenlijst') ?> (<span id="word-count"><?= count($words) ?></span> <?= t('woorden') ?>)
-          </h2>
-          <button type="button" class="btn btn-soft btn-bordered" id="add-row">
-            <?= icon('plus', 18) ?> <?= t('Rij Toevoegen') ?>
-          </button>
-        </div>
-
-        <div class="word-rows" id="word-rows">
-          <div class="word-row word-row-head">
-            <span><?= t('Nederlands Woord / Zin') ?></span>
-            <span><?= t('Engelse Vertaling') ?></span>
-            <span></span>
-          </div>
-
-          <?php foreach ($words as $word): ?>
-            <div class="word-row">
-              <input class="input input-small" type="text" name="dutch[]" value="<?= e($word['dutch']) ?>" placeholder="<?= t('Nieuw Nederlands woord...') ?>">
-              <input class="input input-small" type="text" name="english[]" value="<?= e($word['english']) ?>" placeholder="<?= t('Engelse vertaling...') ?>">
-              <button type="button" class="icon-button icon-button-row remove-row" title="<?= t('Verwijderen') ?>"><?= icon('trash') ?></button>
+                <div class="field">
+                    <span class="field-label">Zichtbaarheid</span>
+                    <label class="switch-row">
+                        <span class="switch-label"><img src="assets/icons/globe.svg" alt=""> Openbaar maken</span>
+                        <input type="checkbox" name="openbaar" class="switch-input" <?= $openbaar ? 'checked' : '' ?>>
+                        <span class="switch"></span>
+                    </label>
+                    <p class="help-text">Indien openbaar, kunnen anderen je lijst zoeken en oefenen.</p>
+                </div>
             </div>
-          <?php endforeach; ?>
-
-          <!-- Lege rij (gestippeld) om snel een nieuw woord te typen -->
-          <div class="word-row new-row">
-            <input class="input input-small" type="text" name="dutch[]" placeholder="<?= t('Nieuw Nederlands woord...') ?>">
-            <input class="input input-small" type="text" name="english[]" placeholder="<?= t('Engelse vertaling...') ?>">
-            <button type="button" class="icon-button icon-button-row remove-row" disabled title="<?= t('Verwijderen') ?>"><?= icon('trash') ?></button>
-          </div>
         </div>
-      </section>
 
-      <div class="builder-footer">
-        <button class="btn btn-outline" type="submit" name="action" value="draft"><?= t('Concept Opslaan') ?></button>
-        <button class="btn btn-primary" type="submit" name="action" value="publish"><?= t('Publiceren') ?></button>
-      </div>
-    </div>
-  </form>
+        <!-- Rechts: de woorden -->
+        <div class="words-column">
+            <div class="card">
+                <div class="words-header">
+                    <h2 class="card-title">Woordenlijst</h2>
+                    <button type="button" class="btn btn-soft" onclick="rijToevoegen()">
+                        <img src="assets/icons/plus.svg" alt=""> Rij Toevoegen
+                    </button>
+                </div>
+
+                <div class="word-row word-row-head">
+                    <span>Nederlands Woord / Zin</span>
+                    <span>Engelse Vertaling</span>
+                    <span></span>
+                </div>
+
+                <div id="rijen" class="word-rows">
+                    <?php foreach ($woorden as $woord) { ?>
+                        <div class="word-row">
+                            <input class="input input-small" type="text" name="nederlands[]" value="<?= htmlspecialchars($woord['dutch']) ?>">
+                            <input class="input input-small" type="text" name="engels[]" value="<?= htmlspecialchars($woord['english']) ?>">
+                            <button type="button" class="icon-button icon-button-row" onclick="rijVerwijderen(this)">
+                                <img src="assets/icons/trash.svg" alt="Verwijderen">
+                            </button>
+                        </div>
+                    <?php } ?>
+
+                    <!-- Altijd één lege rij om een nieuw woord te typen -->
+                    <div class="word-row">
+                        <input class="input input-small" type="text" name="nederlands[]" placeholder="Nieuw Nederlands woord...">
+                        <input class="input input-small" type="text" name="engels[]" placeholder="Engelse vertaling...">
+                        <button type="button" class="icon-button icon-button-row" onclick="rijVerwijderen(this)">
+                            <img src="assets/icons/trash.svg" alt="Verwijderen">
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="builder-footer">
+                <button class="btn btn-outline" type="submit" name="knop" value="concept">Concept Opslaan</button>
+                <button class="btn btn-primary" type="submit" name="knop" value="publiceren">Publiceren</button>
+            </div>
+        </div>
+    </form>
 </main>
-<?php pageFooter(); ?>
+
+<script>
+    // Nieuwe lege rij onderaan toevoegen
+    function rijToevoegen() {
+        let rij = document.createElement('div');
+        rij.className = 'word-row';
+        rij.innerHTML =
+            '<input class="input input-small" type="text" name="nederlands[]" placeholder="Nieuw Nederlands woord...">' +
+            '<input class="input input-small" type="text" name="engels[]" placeholder="Engelse vertaling...">' +
+            '<button type="button" class="icon-button icon-button-row" onclick="rijVerwijderen(this)">' +
+            '<img src="assets/icons/trash.svg" alt="Verwijderen"></button>';
+        document.getElementById('rijen').appendChild(rij);
+    }
+
+    // De rij weghalen waar het prullenbakje in staat
+    function rijVerwijderen(knop) {
+        knop.parentElement.remove();
+    }
+</script>
+
+<?php include 'includes/footer.php'; ?>

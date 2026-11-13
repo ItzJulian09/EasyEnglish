@@ -1,9 +1,4 @@
 <?php
-// =====================================================
-// taal.php
-// Wordt aangeroepen door de NL/EN-knop in de header.
-// Voorbeeld: taal.php?taal=en&terug=/index.php
-// =====================================================
 
 require_once __DIR__ . '/includes/functions.php';
 

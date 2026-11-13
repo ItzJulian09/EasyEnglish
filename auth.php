@@ -16,7 +16,7 @@ if (currentUser()) {
 $userRepository = new UserRepository();
 $error = '';
 
-// Wat de gebruiker al had ingevuld, zodat dat blijft staan bij een fout
+
 $fullName = trim($_POST['full_name'] ?? '');
 $email = strtolower(trim($_POST['email'] ?? ''));
 
@@ -25,7 +25,7 @@ if (isPost()) {
     $password = $_POST['password'] ?? '';
 
     if ($isRegister) {
-        // ---------- Registreren ----------
+       
         if ($fullName === '') {
             $error = t('Vul je volledige naam in.');
         } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -43,7 +43,7 @@ if (isPost()) {
             redirect('index.php');
         }
     } else {
-        // ---------- Inloggen ----------
+       
         $user = $userRepository->findByEmail($email);
 
         if ($user && password_verify($password, $user['password_hash'])) {
