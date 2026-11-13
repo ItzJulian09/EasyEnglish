@@ -128,7 +128,6 @@ class WordList
         $stmt->execute([$id, $userId]);
     }
 
-    n
     public function deleteAsAdmin($id)
     {
         $stmt = $this->db->prepare('DELETE FROM word_lists WHERE id = ?');
